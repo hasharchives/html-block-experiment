@@ -1,112 +1,9 @@
-import { EmbedderDummyHandler } from './embedder-dummy';
-
-const scripts = new WeakMap();
-const blocks = new Map();
-
-function getIdForRef(ref) {
-  let blockId;
-
-  if (scripts.has(ref)) {
-    blockId = scripts.get(ref);
-  } else if (ref) {
-    if (typeof ref === 'string') {
-      ref = { src: ref };
-    }
-
-    if ('src' in ref) {
-      blockId = new URL(ref.src).searchParams.get('blockId');
-    } else if ('blockId' in ref) {
-      blockId = ref.blockId;
-    }
-  }
-
-  if (!blockId) {
-    throw new Error('Block script not setup properly');
-  }
-
-  return blockId;
-}
-
-window.initBlock = (ref) => {
-  const blockId = getIdForRef(ref);
-  const elm = blocks.get(blockId);
-
-  if (!elm) {
-    throw new Error('Cannot find element');
-  }
-
-  return elm;
-};
-
-window.markScript = (script, ref) => {
-  const blockId = getIdForRef(ref);
-
-  if (script.type === 'module') {
-    if (script.src) {
-      const url = new URL(script.src);
-      url.searchParams.set('blockId', blockId);
-      script.src = url.toString();
-    } else {
-      script.innerHTML = `
-      const initBlock = () => window.initBlock({ blockId: "${blockId}" });
-      const markScript = (script) => window.markScript(script, { blockId: "${blockId}" });
-
-      ${script.innerHTML};
-    `;
-    }
-  } else {
-    scripts.set(script, blockId);
-  }
-};
-
-function markBlockScripts(block) {
-  const blockId = uuid();
-
-  blocks.set(blockId, block);
-
-  for (const script of Array.from(block.querySelectorAll('script'))) {
-    markScript(script, { blockId });
-  }
-}
-
-function renderBlock(html) {
-  const frag = document.createRange().createContextualFragment(html);
-  const parent = document.createElement('div');
-  parent.append(frag);
-
-  new EmbedderDummyHandler({
-    callbacks: {
-      getRandomNumber: () => {
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            if (Math.random() > 0.9) {
-              resolve({
-                errors: [
-                  {
-                    message: 'RandomError',
-                    code: 'ERRROR',
-                  },
-                ],
-              });
-            } else {
-              resolve({ payload: Math.round(Math.random() * 100) });
-            }
-          }, 500);
-        });
-      },
-    },
-    element: parent,
-  });
-
-  markBlockScripts(parent);
-
-  document.getElementById('app').append(parent);
-}
+import { renderBlock } from './render-block';
 
 renderBlock(`
   <button id="button">Get Random Number</button>
   <script type="module">
-  import { BlockDummyHandler } from "./block-dummy.js";
+  import { BlockDummyHandler } from "./services/block-dummy.js";
   const elm = initBlock();
   const service = new BlockDummyHandler({ element: elm });
 
@@ -145,13 +42,13 @@ renderBlock(`
 
 renderBlock(`
   Green
-  <script type="module" src="${new URL('./green.js', import.meta.url)}">
+  <script type="module" src="${new URL('./blocks/green.js', import.meta.url)}">
   </script>
 `);
 
 renderBlock(`
   Yellow
-  <script src="${new URL('./yellow.js', import.meta.url)}">
+  <script src="${new URL('./blocks/yellow.js', import.meta.url)}">
   </script>
 `);
 
@@ -184,8 +81,10 @@ renderBlock(`
   <script type="module">
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "${new URL('./purple.js', import.meta.url)}";
+    script.src = "${new URL('./blocks/purple.js', import.meta.url)}";
     markScript(script);
     initBlock().appendChild(script);
   </script>
 `);
+
+renderBlock(new URL('./blocks/pink.html', import.meta.url));
