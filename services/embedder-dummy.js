@@ -8,4 +8,8 @@ export class EmbedderDummyHandler extends EmbedderServiceHandler {
       this.registerCallbacks(callbacks);
     }
   }
+
+  getInitPayload() {
+    return {};
+  }
 }

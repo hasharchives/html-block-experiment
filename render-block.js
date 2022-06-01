@@ -1,13 +1,7 @@
 import { EmbedderDummyHandler } from './services/embedder-dummy';
 import { markBlockScripts } from './html';
 
-export async function renderBlock(html) {
-  if (html instanceof URL) {
-    html = await (await fetch(html)).text();
-  }
-
-  console.log(html);
-
+export function renderBlock(html) {
   const frag = document.createRange().createContextualFragment(html);
   const parent = document.createElement('div');
   parent.append(frag);

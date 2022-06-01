@@ -86,5 +86,3 @@ renderBlock(`
     initBlock().appendChild(script);
   </script>
 `);
-
-renderBlock(new URL('./blocks/pink.html', import.meta.url));
